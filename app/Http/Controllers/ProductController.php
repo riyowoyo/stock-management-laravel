@@ -20,21 +20,6 @@ class ProductController extends Controller
         return view('products.edit', compact('product'));
     }
 
-    // Store new product (Add via modal)
-    public function store(Request $request)
-    {
-        $request->validate([
-            'product_code' => 'required|unique:products',
-            'name' => 'required',
-            'unit' => 'required',
-            'price' => 'required|numeric',
-            'stock' => 'required|integer',
-        ]);
-
-        Product::create($request->all());
-        return redirect()->route('products.index')->with('success', 'Product created successfully.');
-    }
-
     // Update product (Edit via form sendiri)
     public function update(Request $request, Product $product)
     {
