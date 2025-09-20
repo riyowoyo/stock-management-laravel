@@ -7,12 +7,45 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    // List all products
-    public function index()
+    public function index(Request $request)
     {
-        $products = Product::all();
+        $query = Product::query();
+
+        if ($request->search) {
+            $query->where('name', 'like', "%{$request->search}%")
+                ->orWhere('product_code', 'like', "%{$request->search}%");
+        }
+
+        $products = $query->paginate(10)->withQueryString();
+
         return view('products.index', compact('products'));
     }
+
+    public function create()
+    {
+        return view('products.create');
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'product_code' => 'required|unique:products',
+            'name' => 'required',
+            'unit' => 'required',
+            'price' => 'required|numeric',
+            'stock' => 'integer',
+        ]);
+
+        Product::create([
+            'product_code' => $request->product_code,
+            'name' => $request->name,
+            'unit' => $request->unit,
+            'price' => $request->price,
+            'stock' => 0, // stok awal selalu 0
+        ]);
+        return redirect()->route('products.index')->with('success', 'Product created successfully.');
+    }
+
 
     // Show form to edit product
     public function edit(Product $product)
@@ -28,7 +61,6 @@ class ProductController extends Controller
             'name' => 'required',
             'unit' => 'required',
             'price' => 'required|numeric',
-            'stock' => 'required|integer',
         ]);
 
         $product->update($request->all());

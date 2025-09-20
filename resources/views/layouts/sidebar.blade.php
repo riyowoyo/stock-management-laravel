@@ -19,6 +19,11 @@
                 Pengelolaan Stok
             </a>
         </li>
+          <li>
+            <a href="{{ route('activities.index') }}" class="nav-link text-white">
+                Aktivitas
+            </a>
+        </li>
 
     </ul>
     <hr>

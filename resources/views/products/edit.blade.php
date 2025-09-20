@@ -23,10 +23,6 @@
             <label>Harga</label>
             <input type="number" name="price" class="form-control" value="{{ old('price', $product->price) }}" required>
         </div>
-        <div class="mb-3">
-            <label>Stok</label>
-            <input type="number" name="stock" class="form-control" value="{{ old('stock', $product->stock) }}" required>
-        </div>
         <button type="submit" class="btn btn-primary">Update</button>
         <a href="{{ route('products.index') }}" class="btn btn-secondary">Batal</a>
     </form>

@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Transaction;
 use App\Models\Product;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\TransactionsExport;
+use Maatwebsite\Excel\Facades\Excel;
+
 
 class TransactionController extends Controller
 {
@@ -12,12 +16,20 @@ class TransactionController extends Controller
     {
         $query = Transaction::with('product')->latest();
 
-        if ($request->has('type') && in_array($request->type, ['in', 'out'])) {
+        if ($request->type && in_array($request->type, ['in', 'out'])) {
             $query->where('type', $request->type);
         }
 
-        $transactions = $query->paginate(10);
+        if ($request->search) {
+            $query->whereHas(
+                'product',
+                fn($q) =>
+                $q->where('name', 'like', "%{$request->search}%")
+                    ->orWhere('product_code', 'like', "%{$request->search}%")
+            )->orWhere('description', 'like', "%{$request->search}%");
+        }
 
+        $transactions = $query->paginate(10)->withQueryString();
         return view('transactions.index', compact('transactions'));
     }
 
@@ -33,7 +45,7 @@ class TransactionController extends Controller
             'product_id' => 'required',
             'type' => 'required|in:in,out',
             'quantity' => 'required|integer|min:1',
-            'description' => 'nullable|string',
+            'description' => 'required|string',
             'date' => 'required|date',
         ]);
 
@@ -66,8 +78,6 @@ class TransactionController extends Controller
 
         return redirect()->route('transactions.index')->with('success', 'Transaksi berhasil ditambahkan.');
     }
-
-
 
     public function edit(Transaction $transaction)
     {
@@ -141,5 +151,26 @@ class TransactionController extends Controller
         $transaction->delete();
 
         return redirect()->route('transactions.index')->with('success', 'Transaksi berhasil dihapus.');
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $query = Transaction::with('product');
+
+        // filter kalau ada request type (in/out)
+        if ($request->has('type')) {
+            $query->where('type', $request->type);
+        }
+
+        $transactions = $query->get();
+
+        $pdf = Pdf::loadView('transactions.pdf', compact('transactions'));
+        return $pdf->download('transactions.pdf');
+    }
+
+    public function exportExcel(Request $request)
+    {
+        $type = $request->get('type'); // bisa null, in, atau out
+        return Excel::download(new TransactionsExport($type), 'transactions.xlsx');
     }
 }
