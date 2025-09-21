@@ -9,7 +9,6 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\TransactionsExport;
 use Maatwebsite\Excel\Facades\Excel;
 
-
 class TransactionController extends Controller
 {
     public function index(Request $request)
@@ -51,21 +50,19 @@ class TransactionController extends Controller
 
         $product = Product::findOrFail($request->product_id);
 
-        // ✅ cek stok dulu sebelum insert
         if ($request->type === 'out' && $product->stock < $request->quantity) {
             return back()
                 ->withErrors(['quantity' => 'Stok tidak mencukupi untuk transaksi keluar.'])
                 ->withInput();
         }
 
-        // baru buat transaksi
         $transaction = Transaction::create([
-            'product_id' => $request->product_id,
-            'user_id' => auth()->id ?? 1,
-            'type' => $request->type,
-            'quantity' => $request->quantity,
+            'product_id'  => $request->product_id,
+            'user_id' => auth()->id(),
+            'type'        => $request->type,
+            'quantity'    => $request->quantity,
             'description' => $request->description,
-            'date' => $request->date,
+            'date'        => $request->date,
         ]);
 
         // update stok
@@ -104,24 +101,28 @@ class TransactionController extends Controller
         }
         $oldProduct->save();
 
-        // ambil produk baru (bisa sama atau beda dengan lama)
         $newProduct = Product::findOrFail($request->product_id);
 
-        // cek stok dulu kalau barang keluar
         if ($request->type === 'out' && $newProduct->stock < $request->quantity) {
+            // rollback
+            if ($transaction->type === 'in') {
+                $oldProduct->stock += $transaction->quantity;
+            } else {
+                $oldProduct->stock -= $transaction->quantity;
+            }
+            $oldProduct->save();
+
             return back()->withErrors(['quantity' => 'Stok tidak mencukupi untuk update transaksi keluar.'])->withInput();
         }
 
-        // update transaksi
         $transaction->update([
-            'product_id' => $request->product_id,
-            'type' => $request->type,
-            'quantity' => $request->quantity,
+            'product_id'  => $request->product_id,
+            'type'        => $request->type,
+            'quantity'    => $request->quantity,
             'description' => $request->description,
-            'date' => $request->date,
+            'date'        => $request->date,
         ]);
 
-        // update stok baru
         if ($transaction->type === 'in') {
             $newProduct->stock += $transaction->quantity;
         } else {
@@ -131,19 +132,30 @@ class TransactionController extends Controller
 
         return redirect()->route('transactions.index')->with('success', 'Transaksi berhasil diupdate.');
     }
+
+    public function stockCard($id)
+    {
+        $product = Product::findOrFail($id);
+
+        $transactions = Transaction::where('product_id', $product->id)
+            ->orderBy('date', 'asc')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        return view('products.stock-card', compact('product', 'transactions'));
+    }
+
     public function destroy(Transaction $transaction)
     {
         $product = $transaction->product;
 
         if ($transaction->type === 'in') {
-            // Rollback barang masuk → kurangi stok
             if ($product->stock < $transaction->quantity) {
                 return redirect()->route('transactions.index')
                     ->with('error', 'Tidak bisa menghapus transaksi ini karena stok akan menjadi minus.');
             }
             $product->stock -= $transaction->quantity;
         } else {
-            // Rollback barang keluar → tambahin stok
             $product->stock += $transaction->quantity;
         }
 
@@ -156,21 +168,18 @@ class TransactionController extends Controller
     public function exportPdf(Request $request)
     {
         $query = Transaction::with('product');
-
-        // filter kalau ada request type (in/out)
         if ($request->has('type')) {
             $query->where('type', $request->type);
         }
 
         $transactions = $query->get();
-
         $pdf = Pdf::loadView('transactions.pdf', compact('transactions'));
         return $pdf->download('transactions.pdf');
     }
 
     public function exportExcel(Request $request)
     {
-        $type = $request->get('type'); // bisa null, in, atau out
+        $type = $request->get('type');
         return Excel::download(new TransactionsExport($type), 'transactions.xlsx');
     }
 }

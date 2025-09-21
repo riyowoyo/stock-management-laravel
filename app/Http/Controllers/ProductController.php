@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\TransactionsExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProductController extends Controller
 {
@@ -46,13 +49,29 @@ class ProductController extends Controller
         return redirect()->route('products.index')->with('success', 'Product created successfully.');
     }
 
-
     // Show form to edit product
     public function edit(Product $product)
     {
         return view('products.edit', compact('product'));
     }
 
+    public function exportStockCardPdf($id)
+    {
+        $product = Product::findOrFail($id);
+        $transactions = $product->transactions()
+            ->orderBy('date', 'asc')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $pdf = Pdf::loadView('products.stock-card-pdf', compact('product', 'transactions'));
+        return $pdf->download('kartu-stok-' . $product->product_code . '.pdf');
+    }
+
+    public function exportStockCardExcel($id)
+    {
+        $product = Product::findOrFail($id);
+        return Excel::download(new \App\Exports\StockCardExport($product), 'kartu-stok-' . $product->product_code . '.xlsx');
+    }
     // Update product (Edit via form sendiri)
     public function update(Request $request, Product $product)
     {

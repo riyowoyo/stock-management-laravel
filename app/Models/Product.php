@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use id;
 use Spatie\Activitylog\LogOptions;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+
 
 class Product extends Model
 {
@@ -24,27 +27,33 @@ class Product extends Model
         return $this->hasMany(Transaction::class);
     }
 
-    // Semua activity pakai user_id = 1 & tambahkan detail produk saat delete
-    public function tapActivity(\Spatie\Activitylog\Models\Activity $activity, string $eventName)
+    public function tapActivity(Activity $activity, string $eventName)
     {
-        $activity->causer_id = 1; // Hardcode Test User
+        $activity->causer_id = auth()->id();
 
-        if ($eventName === 'deleted') {
-            $activity->properties = [
-                'name' => $this->name,
-                'product_code' => $this->product_code,
-                'unit' => $this->unit,
-                'price' => $this->price,
-                'stock' => $this->stock,
-            ];
-        }
+        // Info tambahan yang selalu muncul
+        $activity->properties = [
+            'Kode Produk' => $this->product_code,
+            'Nama Produk' => $this->name,
+            'Satuan'      => $this->unit,
+            'Harga'       => number_format($this->price, 0, ',', '.'),
+            'Stok'        => $this->stock,
+        ];
     }
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name','unit','price','stock','product_code'])
+            ->useLogName('product_audit')
+            ->logOnly(['product_code', 'name', 'unit', 'price', 'stock'])
             ->logOnlyDirty()
-            ->setDescriptionForEvent(fn(string $eventName) => "Produk {$eventName}");
+            ->setDescriptionForEvent(function (string $eventName) {
+                return match ($eventName) {
+                    'created' => "Produk baru telah ditambahkan: {$this->name} ({$this->product_code})",
+                    'updated' => "Produk {$this->name} ({$this->product_code}) telah diperbarui",
+                    'deleted' => "Produk {$this->name} ({$this->product_code}) telah dihapus",
+                    default   => "Produk {$this->name} ({$this->product_code}) mengalami perubahan",
+                };
+            });
     }
 }

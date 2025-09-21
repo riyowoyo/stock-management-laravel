@@ -4,48 +4,102 @@
 
 @section('content')
 <div class="container">
-    <h3 class="mb-4">📋 Audit Activity</h3>
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-body py-3">
+            <h5 class="mb-0 fw-bold">📝 Audit Activity</h5>
+        </div>
+        <div class="card-body p-3">
 
-    {{-- Filter Event --}}
-    <div class="mb-3">
-        <a href="{{ route('activities.index') }}" class="btn btn-outline-dark btn-sm {{ request('event') ? '' : 'active' }}">Semua</a>
-        <a href="{{ route('activities.index', ['event' => 'created']) }}" class="btn btn-outline-success btn-sm {{ request('event') == 'created' ? 'active' : '' }}">Ditambahkan</a>
-        <a href="{{ route('activities.index', ['event' => 'updated']) }}" class="btn btn-outline-warning btn-sm {{ request('event') == 'updated' ? 'active' : '' }}">Diperbarui</a>
-        <a href="{{ route('activities.index', ['event' => 'deleted']) }}" class="btn btn-outline-danger btn-sm {{ request('event') == 'deleted' ? 'active' : '' }}">Dihapus</a>
+            {{-- Switch Produk / Transaksi --}}
+            <div class="d-flex gap-2 mb-3 flex-wrap">
+                <a href="{{ route('activities.index', ['type' => 'product']) }}"
+                   class="btn btn-outline-primary {{ $type === 'product' ? 'active' : '' }}">
+                    Produk
+                </a>
+                <a href="{{ route('activities.index', ['type' => 'transaction']) }}"
+                   class="btn btn-outline-secondary {{ $type === 'transaction' ? 'active' : '' }}">
+                    Transaksi
+                </a>
+            </div>
+
+            {{-- Table --}}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 40px;">No</th>
+                            <th>User</th>
+                            <th>Deskripsi</th>
+                            <th>Event</th>
+                            <th>Tanggal</th>
+                            <th style="width: 80px;">Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($logs as $log)
+                            <tr>
+                                <td>{{ $loop->iteration + ($logs->currentPage()-1)*$logs->perPage() }}</td>
+                                <td>{{ $log->causer?->name ?? 'System' }}</td>
+                                <td>{{ $log->description }}</td>
+                                <td>
+                                    @php
+                                        $badgeClass = match($log->event) {
+                                            'created' => 'success',
+                                            'updated' => 'warning',
+                                            'deleted' => 'danger',
+                                            default => 'secondary'
+                                        };
+                                        $eventLabel = match($log->event) {
+                                            'created' => 'Ditambahkan',
+                                            'updated' => 'Diperbarui',
+                                            'deleted' => 'Dihapus',
+                                            default => ucfirst($log->event)
+                                        };
+                                    @endphp
+                                    <span class="badge bg-{{ $badgeClass }}">{{ $eventLabel }}</span>
+                                </td>
+                                <td>{{ $log->created_at->format('d M Y H:i') }}</td>
+                                <td>
+                                    @if($log->properties)
+                                        <button class="btn btn-sm btn-info" data-bs-toggle="collapse"
+                                                data-bs-target="#detail-{{ $log->id }}">
+                                            Detail
+                                        </button>
+                                    @endif
+                                </td>
+                            </tr>
+
+                            @if($log->properties)
+                            <tr class="collapse bg-light" id="detail-{{ $log->id }}">
+                                <td colspan="6" class="p-2">
+                                    <table class="table table-sm table-bordered mb-0">
+                                        <tbody>
+                                            @foreach($log->properties->toArray() as $key => $value)
+                                                <tr>
+                                                    <th style="width: 200px;">{{ $key }}</th>
+                                                    <td>{{ is_array($value) ? json_encode($value) : $value }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                            @endif
+                        @empty
+                            <tr>
+                                <td colspan="6" class="text-center py-3">Belum ada aktivitas.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- Pagination --}}
+            <div class="d-flex justify-content-end mt-3">
+                {{ $logs->links('pagination::bootstrap-5') }}
+            </div>
+
+        </div>
     </div>
-
-    <table class="table table-bordered table-striped">
-        <thead class="table-dark">
-            <tr>
-                <th>No</th>
-                <th>User</th>
-                <th>Event</th>
-                <th>Detail Perubahan</th>
-                <th>Waktu</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($activities as $index => $activity)
-            <tr>
-                <td>{{ $index + 1 }}</td>
-                <td>{{ $activity['user'] }}</td>
-                <td>{{ $activity['event'] }}</td>
-                <td>
-                    @foreach($activity['details'] as $detail)
-                        <div>{{ $detail }}</div>
-                    @endforeach
-                </td>
-                <td>{{ $activity['time'] }}</td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="5" class="text-center">Belum ada aktivitas</td>
-            </tr>
-            @endforelse
-        </tbody>
-    </table>
-
-    {{-- Pagination --}}
-    {{ $pagination->links() }}
 </div>
 @endsection

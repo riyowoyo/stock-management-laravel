@@ -1,21 +1,10 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom px-4">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="#">RDS Stock Management</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
-                data-bs-target="#navbarNav" aria-controls="navbarNav" 
-                aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
+<nav id="main-navbar" class="navbar navbar-light bg-white shadow px-3">
+    <div class="container-fluid d-flex justify-content-start align-items-center p-0">
+
+        <!-- Burger + Title -->
+        <button class="btn btn-outline-primary btn-toggle-sidebar d-lg-none me-3" style="height:40px; width:40px; display:flex; align-items:center; justify-content:center;">
+            <i class="bi bi-list fs-4"></i>
         </button>
 
-        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-            <ul class="navbar-nav">
-                <li class="nav-item">
-                    <a class="nav-link" href="#">Profil</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-danger" href="#">Logout</a>
-                </li>
-            </ul>
-        </div>
     </div>
 </nav>
